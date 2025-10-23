@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Curvature Detection System</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://docs.opencv.org/4.8.0/opencv.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>Sistem Deteksi Kelengkungan Objek</h1>
+            <p>Deteksi real-time perubahan bentuk objek menggunakan computer vision</p>
+        </header>
+
+        <div class="main-content">
+            <!-- Camera Section -->
+            <div class="camera-section">
+                <div class="video-container">
+                    <video id="videoInput" autoplay muted></video>
+                    <canvas id="canvasOutput"></canvas>
+                    <canvas id="processCanvas" style="display: none;"></canvas>
+                </div>
+                
+                <div class="camera-controls">
+                    <button id="startCamera" class="btn btn-primary">
+                        <span class="icon">📹</span>
+                        Mulai Kamera
+                    </button>
+                    <button id="calibrate" class="btn btn-secondary" disabled>
+                        <span class="icon">⚖️</span>
+                        Kalibrasi Baseline
+                    </button>
+                    <button id="resetCalibration" class="btn btn-warning" disabled>
+                        <span class="icon">🔄</span>
+                        Reset Kalibrasi
+                    </button>
+                </div>
+
+                <div class="serial-controls">
+                    <h4>Koneksi Serial (Load Cell)</h4>
+                    <button id="connectSerial" class="btn btn-primary">
+                        <span class="icon">🔌</span>
+                        Hubungkan Serial
+                    </button>
+                    <button id="disconnectSerial" class="btn btn-warning" disabled>
+                        <span class="icon">❌</span>
+                        Putus Koneksi
+                    </button>
+                    <div class="serial-info">
+                        <span id="serialStatus">Tidak Terhubung</span>
+                        <span id="weightValue">0.00 kg</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls Section -->
+            <div class="controls-section">
+                <div class="control-group">
+                    <h3>Pengaturan Deteksi</h3>
+                    
+                    <div class="color-picker-section">
+                        <label>Pemilihan Warna Objek:</label>
+                        <div class="color-picker-controls">
+                            <button id="enableColorPicker" class="btn btn-primary">
+                                <span class="icon">🎯</span>
+                                Pilih Warna dari Video
+                            </button>
+                            <div class="color-info">
+                                <div class="selected-color" id="selectedColor"></div>
+                                <span id="colorValues">Klik pada objek untuk memilih warna</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="slider-group">
+                        <label for="colorTolerance">Toleransi Warna:</label>
+                        <input type="range" id="colorTolerance" min="5" max="50" value="15" class="slider">
+                        <span class="slider-value">15</span>
+                    </div>
+
+                    <div class="slider-group">
+                        <label for="sensitivity">Sensitivitas Deteksi:</label>
+                        <input type="range" id="sensitivity" min="1" max="10" value="5" class="slider">
+                        <span class="slider-value">5</span>
+                    </div>
+
+                    <div class="checkbox-group">
+                        <label>
+                            <input type="checkbox" id="showMask" checked>
+                            <span class="checkmark"></span>
+                            Tampilkan Area Deteksi
+                        </label>
+                    </div>
+                </div>
+
+                <div class="status-group">
+                    <h3>Status Sistem</h3>
+                    <div class="status-item">
+                        <span class="status-label">Kamera:</span>
+                        <span id="cameraStatus" class="status-value offline">Offline</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Kalibrasi:</span>
+                        <span id="calibrationStatus" class="status-value not-calibrated">Belum Dikalibrasi</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Warna Dipilih:</span>
+                        <span id="colorSelectedStatus" class="status-value not-detected">Belum Dipilih</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Objek Terdeteksi:</span>
+                        <span id="objectStatus" class="status-value not-detected">Tidak Terdeteksi</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Kelengkungan:</span>
+                        <span id="curvatureValue" class="status-value">0.00 mm</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Serial Port:</span>
+                        <span id="serialPortStatus" class="status-value offline">Offline</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Berat Load Cell:</span>
+                        <span id="loadCellValue" class="status-value">0.00 kg</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart Section -->
+            <div class="chart-section">
+                <h3>Grafik Kelendutan Real-time</h3>
+                <div class="chart-container">
+                    <canvas id="curvatureChart"></canvas>
+                </div>
+                <div class="chart-controls">
+                    <button id="clearChart" class="btn btn-secondary">
+                        <span class="icon">🗑️</span>
+                        Bersihkan Data
+                    </button>
+                    <button id="exportData" class="btn btn-primary">
+                        <span class="icon">💾</span>
+                        Export Data
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Panel -->
+        <div class="info-panel">
+            <h3>Cara Penggunaan:</h3>
+            <ol>
+                <li>Klik "Mulai Kamera" untuk mengaktifkan webcam</li>
+                <li>Klik "Pilih Warna dari Video" lalu klik pada objek di video untuk memilih warna</li>
+                <li>Sesuaikan toleransi warna jika diperlukan</li>
+                <li>Posisikan objek dalam kondisi horizontal/datar</li>
+                <li>Klik "Kalibrasi Baseline" untuk menetapkan referensi</li>
+                <li>Sistem akan mendeteksi kelengkungan secara real-time dengan marking area</li>
+            </ol>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
